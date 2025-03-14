@@ -42,28 +42,35 @@ exports.signup = async (req, res) => {
 
 // Login a user
 exports.login = async (req, res) => {
-  const { user_email, password } = req.body;
-  
   try {
+    const { user_email, password } = req.body;
+
+    // Validate input
+    if (!user_email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
     // Find user by email
     const user = await User.findOne({ where: { user_email } });
-    
+
     if (!user) {
-      // Avoid specifying which part of the credentials was incorrect
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
     // Compare passwords
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    
     if (!isPasswordValid) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
     // Create JWT token
-    const token = jwt.sign({ userId: user.user_id, roles: user.user_roles }, 'codex', {
-      expiresIn: '1h',  // Token expires in 1 hour
-    });
+    let token;
+    try {
+      token = jwt.sign({ userId: user.user_id, roles: user.user_roles }, 'codex', { expiresIn: '1h' });
+    } catch (tokenError) {
+      console.error("JWT Error: ", tokenError);
+      return res.status(500).json({ message: "Token generation failed" });
+    }
 
     // Return token and user info (excluding password)
     return res.status(200).json({
@@ -78,10 +85,11 @@ exports.login = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("Login error: ", err);  // Log the error for debugging purposes
-    return res.status(500).json({ message: "Server error", error: err });
+    console.error("Login error: ", err);
+    return res.status(500).json({ message: "Server error, please try again later" });
   }
 };
+
 
 
 // Google OAuth Login - Step 1: Redirect to Google OAuth
@@ -187,8 +195,9 @@ exports.userProfile = async (req, res) => {
         user_id: user.user_id,
         user_name: user.user_name,
         user_email: user.user_email,
+        user_picture : user.user_picture ,
         roles: user.user_roles,
-        createdAt: user.createdAt,  // Example of additional data you might want to send
+        createdAt: user.createdAt,  
         updatedAt: user.updatedAt,
       }
     });
