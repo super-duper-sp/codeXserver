@@ -111,7 +111,6 @@ exports.googleOauth = async (req, res) => {
 
     console.log("Received authorization code from Google:", code);
 
-    // Exchange the authorization code for an access token
     const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
       code: code,
       client_id: process.env.GOOGLE_CLIENT_ID,
@@ -126,7 +125,6 @@ exports.googleOauth = async (req, res) => {
 
     const { access_token } = tokenResponse.data;
 
-    // Fetch user details from Google API
     const userResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${access_token}` },
     });
@@ -140,23 +138,42 @@ exports.googleOauth = async (req, res) => {
     console.log("Google user info:", userResponse.data);
 
     // Check if user already exists
+    
     let user = await User.findOne({ where: { oauth_provider_id: googleId, oauth_provider: 'google' } });
 
     if (!user) {
-      // Create a new user if not found
       user = await User.create({
         user_name: displayName,
         user_email: email,
         oauth_provider: 'google',
         oauth_provider_id: googleId,
-        user_picture: picture, // Store profile picture
+        user_picture: picture,
+        user_roles: ['user'], // 👈👈 Default role as array
       });
     }
 
     // Generate JWT token
     const token = jwt.sign({ userId: user.user_id }, process.env.JWT_SECRET || 'codex', { expiresIn: '1h' });
 
-    return res.status(200).json({ message: "Google login successful", token  });
+    let currentUser = await User.findOne({ where: { user_email : email } });
+
+
+    // user_role is array here
+    console.log("User role array:", JSON.stringify(currentUser.user_roles)); 
+
+    // user.user_role is now an array
+    const encodedToken = encodeURIComponent(token);
+
+// 🔥 Correct this line:
+const encodedRole = encodeURIComponent(JSON.stringify(currentUser.user_roles));
+
+console.log("role", encodedRole, "decoded role", decodeURIComponent(encodedRole));
+
+
+    const redirectUrl = `http://localhost:5173/google-callback?token=${encodedToken}&role=${encodedRole}`;
+
+    return res.redirect(redirectUrl);
+
   } catch (err) {
     console.error("Google OAuth Error:", err);
 
@@ -167,6 +184,7 @@ exports.googleOauth = async (req, res) => {
     return res.status(500).json({ error: 'Google Authentication failed', details: err.message });
   }
 };
+
 
 // Optionally, you can implement logout and get current user functionalities based on your app’s logic.
 //may add later 
@@ -188,7 +206,7 @@ exports.userProfile = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
+  
     // Send back the user profile information
     return res.status(200).json({
       user: {
