@@ -1,10 +1,24 @@
 const mongoose = require("mongoose");
 
-const ChatSchema = new mongoose.Schema({
-  senderId: String,
-  receiverId: String,
-  message: String,
-  timestamp: { type: Date, default: Date.now }
-});
+const chatSchema = new mongoose.Schema(
+  {
+    senderId: {
+      type: String,
+      required: true,
+    },
+    receiverId: {
+      type: String,
+      required: true,
+    },
+    message: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+  },
+  {
+    timestamps: true, // Adds createdAt and updatedAt automatically
+  }
+);
 
-module.exports = mongoose.model("Chat", ChatSchema);
+module.exports = mongoose.model("Chat", chatSchema);

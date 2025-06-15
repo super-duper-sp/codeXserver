@@ -1,20 +1,23 @@
-const router = require("express").Router();
-const { authenticateToken } = require("../Middleware/Authorization/authenticationToken");
-const randomChatController = require("../Controller/randomChat.controller");
+const express = require("express");
+const router = express.Router();
 
-// All routes require authentication
-// router.use(authenticateToken);
 
-// Send a message
-router.post("/send", randomChatController.sendMessage);
 
-// Join chat queue
-router.post("/join", randomChatController.joinChatQueue);
+router.get("/status", (req, res) => {
+  const userSocketMap = req.app.get("userSocketMap");
+  const onlineUsers = req.app.get("onlineUsers");
 
-// Leave chat
-router.post("/leave", randomChatController.leaveChatQueue);
+  // For total chat pairs
+  const controller = req.app.get("randomChatController");
+  const totalChats = controller.getTotalActiveChats();
 
-// Report another user
-router.post("/report", randomChatController.reportUser);
+  res.json({
+    onlineUsers: onlineUsers.size,
+    activeChats: totalChats,
+    queueLength: matchQueue.length,
+    userSocketIds: Object.keys(userSocketMap),
+    queuedUsers: matchQueue,
+  });
+});
 
 module.exports = router;
